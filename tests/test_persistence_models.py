@@ -34,7 +34,7 @@ def test_stale_update_is_rejected(
                 title="Concurrency test",
                 description="",
                 success_criteria=["no lost updates"],
-                state="created",
+                state="draft",
                 revision=0,
             )
             session.add(objective)
@@ -46,7 +46,7 @@ def test_stale_update_is_rejected(
                         objective=objective,
                         title="Initial task",
                         description="",
-                        state="pending",
+                        state="proposed",
                         revision=0,
                     )
                 )
@@ -84,6 +84,9 @@ def test_models_register_expected_tables() -> None:
         "objectives",
         "tasks",
         "task_dependencies",
+        "audit_events",
+        "audit_chain_heads",
+        "execution_claims",
     }
 
 
@@ -97,7 +100,7 @@ def test_objective_and_task_round_trip_on_sqlite() -> None:
                 title="Validate persistence",
                 description="",
                 success_criteria=["tests pass"],
-                state="created",
+                state="draft",
                 revision=0,
             )
             task = TaskRecord(
@@ -105,7 +108,7 @@ def test_objective_and_task_round_trip_on_sqlite() -> None:
                 objective_id="objective-1",
                 title="Add schema",
                 description="",
-                state="pending",
+                state="proposed",
                 revision=0,
             )
             objective.tasks.append(task)
@@ -155,7 +158,7 @@ def test_deleting_objective_removes_tasks_and_dependency_links() -> None:
                 title="Deletion test",
                 description="",
                 success_criteria=["delete cleanly"],
-                state="created",
+                state="draft",
                 revision=0,
             )
 
@@ -164,7 +167,7 @@ def test_deleting_objective_removes_tasks_and_dependency_links() -> None:
                 objective=objective,
                 title="First task",
                 description="",
-                state="pending",
+                state="proposed",
                 revision=0,
             )
             second = TaskRecord(
@@ -172,7 +175,7 @@ def test_deleting_objective_removes_tasks_and_dependency_links() -> None:
                 objective=objective,
                 title="Second task",
                 description="",
-                state="pending",
+                state="proposed",
                 revision=0,
             )
 

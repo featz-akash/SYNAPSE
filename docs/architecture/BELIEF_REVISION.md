@@ -1,7 +1,7 @@
-# SYNAPSE â€” Belief Revision
+# SYNAPSE — Belief Revision
 
-**Status:** Draft â€” pending architecture review
-**Milestone:** 0 â€” Specification
+**Status:** Consolidated architecture draft — review required
+**Milestone:** 0 — Specification
 
 ## 1. Purpose
 
@@ -212,19 +212,20 @@ Tests must cover:
 - Persistence failures during revision.
 - Recovery without losing prior assessment history.
 
-## 13. Open questions
+## 13. Selected decisions and deferred details
 
-The following require explicit design decisions:
-- The formal representation of claims and hypotheses.
-- Whether assessment statuses are mutually exclusive.
-- How evidence reliability and freshness are evaluated.
-- Which symbolic inference rules are supported initially.
-- Whether numeric confidence is required for the first release.
-- How dependent conclusions are invalidated or scheduled for reassessment.
-- How conflicting concurrent revisions are reconciled.
+Selected baseline:
+- Belief assessments are versioned and evidence-grounded; prior versions are preserved.
+- Material revisions include rationale, triggering evidence, provenance, relevant assumptions, and a link to the previous version.
+- Supporting evidence, contradicting evidence, insufficient evidence, and unresolved conflict remain distinct. Conflicting evidence is not silently discarded.
+- Provenance should include source identity, acquisition time, publication/observation time when available, collection method, integrity information, and links from evidence to claims.
+- Source reliability is contextual and must not be represented as objectively calibrated without validation. Hashes, reputation, and model confidence are not proof of truth.
+- Freshness rules depend on the claim and source. Stale evidence is marked for reassessment and is not automatically false; it must be revalidated before consequential decisions when freshness is material.
+- Concurrent revisions use version checks or equivalent transactional controls. Conflicts are detected and reassessed through a validated process; last-write-wins is not allowed.
+- Retention rules distinguish raw evidence, derived artifacts, belief/revision history, and audit records. Where deletion is required, remove content as permitted and preserve only lawful, permitted metadata indicating that content is unavailable and why. Distinguish never collected, deleted/expired, inaccessible, and integrity failure.
+
+Deferred details include the initial formal claim/hypothesis schema, supported symbolic rule set, exact reliability/freshness algorithms, whether numeric confidence is needed in the first release, and specific retention periods. Numeric confidence must not be described as calibrated probability without empirical calibration evidence. These details must be specified before their dependent feature is implemented.
 
 ## 14. Approval status
 
-Draft only. This document must be reconciled with the component contracts,
-state machine, data architecture, security model, and acceptance criteria
-before Milestone 0 can be approved.
+Consolidated draft. Cross-document review remains required before Milestone 0 can be approved.

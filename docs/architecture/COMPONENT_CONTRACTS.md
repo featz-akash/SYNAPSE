@@ -1,7 +1,7 @@
-# SYNAPSE â€” Component Contracts
+# SYNAPSE — Component Contracts
 
-**Status:** Draft â€” pending architecture review
-**Milestone:** 0 â€” Specification
+**Status:** Consolidated architecture draft — review required
+**Milestone:** 0 — Specification
 
 ## 1. Purpose
 
@@ -259,18 +259,18 @@ or contract tests. Security boundaries and recovery require dedicated tests.
 Tests must cover malformed outputs, missing evidence, contradictory claims,
 policy denial, cancellation, persistence failures, and uncertain side effects.
 
-## 7. Unresolved decisions
+## 7. Contract and failure semantics
 
-The following require further design review:
-- Exact typed interfaces and domain models.
-- Transaction boundaries for execution and checkpoint creation.
-- Reconciliation of uncertain external side effects.
-- Verification independence requirements by task class.
-- Approval identity, expiry, and revocation representation.
-- Immutable artifact storage and audit-retention requirements.
+Every component boundary must define validated input/output schemas, authority, persistence responsibility, security requirements, timeout behavior, partial-result behavior, and typed failures. Invalid or unrecognized outputs are rejected rather than coerced into success. Exact language-level types and concrete interface signatures are implementation details, but they must preserve these semantic contracts.
+
+Minimum failure categories include: validation failure; policy denial; authentication/authorization unavailable or invalid; approval required/denied/expired/revoked; dependency unavailable; timeout; rate/resource limit; conflict/stale version; persistence failure; partial result; external outcome uncertain; verification failed; verification inconclusive; and internal error. Retrying is permitted only when the failure is classified as retryable and the side-effect state makes retry safe.
+
+The controller coordinates work and commits state. The planner returns proposals and dependencies only. The model gateway returns validated model output only. The policy engine returns a decision, applicable risk tier, rationale/reference, and approval requirements but never executes. The executor checks the exact authorization again at the execution boundary and returns observations without declaring objective completion. The verifier evaluates observations against explicit success criteria and returns verified, failed, or inconclusive results. Persistence enforces transactions and concurrency but does not decide task success.
+
+For each consequential action, persist intent before execution; record action ID, task and attempt, canonical parameters, authorization reference, observed result, verification result, and reconciliation state. Use stable identifiers and provider idempotency where supported, but do not assume exactly-once external effects. Uncertain outcomes must be reconciled or escalated before retry.
+
+Required state transition and audit records commit in one PostgreSQL transaction. If the transaction fails, neither is considered committed. Downstream event delivery uses a transactional outbox or equivalent with stable event identifiers and idempotent consumers. PostgreSQL unavailability blocks new consequential actions when required durable records cannot be confirmed.
 
 ## 8. Approval status
 
-This document remains a draft. It must be reconciled with the state machine,
-security model, data architecture, and acceptance criteria before Milestone 0
-can be approved.
+Consolidated draft. Component responsibilities and authority boundaries are selected. Exact interface schemas, concrete error class names, verification independence by task class, deployment authentication, artifact scanning, retention periods, and numeric recovery limits remain implementation/deployment details to resolve before the relevant gate. These open details do not permit weakening the invariants above. Cross-document review remains required before Milestone 0 can be approved.

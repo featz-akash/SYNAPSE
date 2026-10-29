@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
-from synapse.domain.errors import StaleRevisionError, ValidationDomainError
+from synapse.domain.errors import InvalidTransitionError, StaleRevisionError, ValidationDomainError
 from synapse.persistence.dependency_validation import (
     DependencyValidationError,
     validate_dependency_graph,
@@ -60,10 +60,16 @@ def replace_task_dependencies(
         select(ObjectiveRecord)
         .where(ObjectiveRecord.id == task.objective_id)
         .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if objective is None:
         raise DependencyValidationError(
             f"Task {task_id!r} refers to a missing objective."
+        )
+    if objective.state == "completed":
+        raise InvalidTransitionError(
+            "Dependencies cannot change after an objective is completed.",
+            details={"objective_id": objective.id, "task_id": task_id},
         )
 
     # Refresh the task after acquiring the lock, so the revision check sees

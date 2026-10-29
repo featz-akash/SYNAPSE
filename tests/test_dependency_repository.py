@@ -22,7 +22,7 @@ def make_objective(objective_id: str) -> ObjectiveRecord:
         title=f"Objective {objective_id}",
         description="",
         success_criteria=["dependency integrity"],
-        state="created",
+        state="draft",
         revision=0,
     )
 
@@ -33,7 +33,7 @@ def make_task(task_id: str, objective: ObjectiveRecord) -> TaskRecord:
         objective=objective,
         title=f"Task {task_id}",
         description="",
-        state="pending",
+        state="proposed",
         revision=0,
     )
 

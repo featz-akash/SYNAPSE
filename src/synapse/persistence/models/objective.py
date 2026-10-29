@@ -28,9 +28,8 @@ class ObjectiveRecord(Base):
     __table_args__ = (
         CheckConstraint("revision >= 0", name="ck_objectives_revision_nonnegative"),
         CheckConstraint(
-            "state IN ('created', 'validating', 'ready', 'planning', 'executing', "
-            "'needs_input', 'paused', 'recovering', 'blocked', 'completed', "
-            "'failed', 'cancelled')",
+            "state IN ('draft', 'needs_input', 'ready', 'running', 'awaiting_approval', "
+            "'paused', 'blocked', 'completed', 'failed', 'cancelled')",
             name="ck_objectives_state",
         ),
     )
@@ -40,7 +39,7 @@ class ObjectiveRecord(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     success_criteria: Mapped[list[str]] = mapped_column(JSON, nullable=False)
-    state: Mapped[str] = mapped_column(String(32), nullable=False, default="created")
+    state: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     __mapper_args__ = {"version_id_col": revision}
     created_at: Mapped[datetime] = mapped_column(

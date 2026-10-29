@@ -89,6 +89,9 @@ def test_base_metadata_registers_expected_tables() -> None:
         "objectives",
         "tasks",
         "task_dependencies",
+        "audit_events",
+        "audit_chain_heads",
+        "execution_claims",
     }
 
 
@@ -143,7 +146,7 @@ def test_uow_persists_changes_after_successful_transaction() -> None:
                     title="Commit test",
                     description="",
                     success_criteria=["persist"],
-                    state="created",
+                    state="draft",
                     revision=0,
                 )
             )
@@ -171,7 +174,7 @@ def test_uow_rolls_back_changes_after_exception() -> None:
                         title="Rollback test",
                         description="",
                         success_criteria=["must not persist"],
-                        state="created",
+                        state="draft",
                         revision=0,
                     )
                 )

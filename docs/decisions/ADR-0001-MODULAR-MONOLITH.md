@@ -1,6 +1,6 @@
 # ADR-0001: Modular Monolith
 
-**Status:** Proposed — pending Milestone 0 approval
+**Status:** Consolidated architecture draft — review required
 **Date:** 2026-10-13
 
 ## Context
@@ -76,7 +76,12 @@ worker system is not required at the outset.
 A modular monolith is not itself a security sandbox. Tool execution and
 untrusted-code isolation require independently enforced controls.
 
+## Operational baseline and deferred infrastructure
+
+PostgreSQL is the authoritative structured store. The first deployment remains local-first and policy-controlled. Separate graph/vector databases, brokers, distributed workers, and a multi-provider model gateway are deferred until measured workload or reliability evidence demonstrates a material need. Safety, authorization, provenance, verification, audit, and recovery controls are not deferred.
+
+Numeric workload/performance targets, budgets, reconciliation limits, backup frequency, and RPO/RTO are not specified without requirements and representative measurements. They must be selected and recorded before the deployment or feature they govern is approved.
+
 ## Approval
 
-Proposed decision. Final acceptance depends on review of the complete
-Milestone 0 architecture specification.
+Selected baseline, pending final cross-document review. This ADR does not independently authorize implementation; Milestone 0 requires explicit user approval after the specification and acceptance gates are reviewed.

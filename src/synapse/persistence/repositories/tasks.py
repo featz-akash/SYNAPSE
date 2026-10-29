@@ -112,15 +112,21 @@ def _would_create_cycle(
 def create_task(session: Session, task: Task) -> Task:
     """Persist a task and its dependencies without committing the transaction."""
     objective = session.scalar(
-        select(ObjectiveRecord).where(
-            ObjectiveRecord.id == task.objective_id
-        )
+        select(ObjectiveRecord)
+        .where(ObjectiveRecord.id == task.objective_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if objective is None:
         raise ResourceNotFoundError(
-        "Objective not found.",
-        details={"objective_id": task.objective_id},
-    )
+            "Objective not found.",
+            details={"objective_id": task.objective_id},
+        )
+    if objective.state == "completed":
+        raise InvalidTransitionError(
+            "Tasks cannot be added to a completed objective.",
+            details={"objective_id": task.objective_id},
+        )
 
     dependencies = _load_dependencies(
         session,
@@ -140,7 +146,7 @@ def create_task(session: Session, task: Task) -> Task:
         objective_id=task.objective_id,
         title=task.title,
         description=task.description,
-        state="pending",
+        state="proposed",
         revision=task.revision,
         created_at=task.created_at,
         dependencies=dependencies,
@@ -178,18 +184,25 @@ def transition_task(
     details={"task_id": task_id},
 )
 
-    # Dependency edits use the objective row as their synchronization lock.
-    # Acquire that same lock before checking readiness.
-    if target_state == TaskState.READY:
+    # Objective completion, task creation, dependency edits, and transitions
+    # into READY/SUCCEEDED share the objective row as a synchronization lock.
+    # SUCCEEDED must participate so completion cannot race a task finishing.
+    if target_state in (TaskState.READY, TaskState.SUCCEEDED):
         objective = session.scalar(
             select(ObjectiveRecord)
             .where(ObjectiveRecord.id == record.objective_id)
             .with_for_update()
+            .execution_options(populate_existing=True)
         )
         if objective is None:
             raise ValidationDomainError(
                 "Cannot transition a task for a nonexistent objective.",
                 details={"objective_id": record.objective_id},
+            )
+        if objective.state == "completed":
+            raise InvalidTransitionError(
+                "Tasks cannot transition after their objective is completed.",
+                details={"objective_id": record.objective_id, "task_id": task_id},
             )
 
         # Refresh the task after waiting for the lock so the readiness

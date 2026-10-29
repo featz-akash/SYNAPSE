@@ -1,4 +1,4 @@
-"""Separate objective and task state machines with explicit transition rules."""
+"""Canonical objective and task state machines with explicit transition rules."""
 
 from __future__ import annotations
 
@@ -14,64 +14,65 @@ from synapse.domain.errors import (
 
 
 class ObjectiveState(StrEnum):
-    CREATED = "created"
-    VALIDATING = "validating"
-    READY = "ready"
-    PLANNING = "planning"
-    EXECUTING = "executing"
+    DRAFT = "draft"
     NEEDS_INPUT = "needs_input"
+    READY = "ready"
+    RUNNING = "running"
+    AWAITING_APPROVAL = "awaiting_approval"
     PAUSED = "paused"
-    RECOVERING = "recovering"
     BLOCKED = "blocked"
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
 
+    # Compatibility aliases for callers that used unambiguous legacy names.
+    CREATED = DRAFT
+    EXECUTING = RUNNING
+
 
 class TaskState(StrEnum):
-    PENDING = "pending"
+    PROPOSED = "proposed"
     READY = "ready"
+    AWAITING_APPROVAL = "awaiting_approval"
     RUNNING = "running"
-    WAITING_FOR_APPROVAL = "waiting_for_approval"
     VERIFYING = "verifying"
+    RECONCILING = "reconciling"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     BLOCKED = "blocked"
     CANCELLED = "cancelled"
 
+    # Compatibility aliases for callers that used unambiguous legacy names.
+    PENDING = PROPOSED
+    WAITING_FOR_APPROVAL = AWAITING_APPROVAL
+
 
 _OBJECTIVE_TRANSITIONS: dict[ObjectiveState, frozenset[ObjectiveState]] = {
-    ObjectiveState.CREATED: frozenset({ObjectiveState.VALIDATING, ObjectiveState.CANCELLED}),
-    ObjectiveState.VALIDATING: frozenset({
-        ObjectiveState.READY, ObjectiveState.NEEDS_INPUT, ObjectiveState.BLOCKED,
-        ObjectiveState.FAILED, ObjectiveState.CANCELLED,
-    }),
-    ObjectiveState.READY: frozenset({
-        ObjectiveState.PLANNING, ObjectiveState.PAUSED, ObjectiveState.CANCELLED,
-    }),
-    ObjectiveState.PLANNING: frozenset({
-        ObjectiveState.EXECUTING, ObjectiveState.NEEDS_INPUT, ObjectiveState.PAUSED,
-        ObjectiveState.BLOCKED, ObjectiveState.FAILED, ObjectiveState.CANCELLED,
-    }),
-    ObjectiveState.EXECUTING: frozenset({
-        ObjectiveState.PLANNING, ObjectiveState.NEEDS_INPUT, ObjectiveState.PAUSED,
-        ObjectiveState.RECOVERING, ObjectiveState.BLOCKED, ObjectiveState.COMPLETED,
-        ObjectiveState.FAILED, ObjectiveState.CANCELLED,
+    ObjectiveState.DRAFT: frozenset({
+        ObjectiveState.NEEDS_INPUT, ObjectiveState.READY, ObjectiveState.CANCELLED,
     }),
     ObjectiveState.NEEDS_INPUT: frozenset({
-        ObjectiveState.READY, ObjectiveState.PLANNING, ObjectiveState.CANCELLED,
+        ObjectiveState.DRAFT, ObjectiveState.READY, ObjectiveState.CANCELLED,
     }),
-    ObjectiveState.PAUSED: frozenset({
-        ObjectiveState.READY, ObjectiveState.PLANNING, ObjectiveState.EXECUTING,
+    ObjectiveState.READY: frozenset({
+        ObjectiveState.RUNNING, ObjectiveState.PAUSED, ObjectiveState.CANCELLED,
+    }),
+    ObjectiveState.RUNNING: frozenset({
+        ObjectiveState.NEEDS_INPUT, ObjectiveState.AWAITING_APPROVAL,
+        ObjectiveState.PAUSED, ObjectiveState.BLOCKED, ObjectiveState.COMPLETED,
+        ObjectiveState.FAILED, ObjectiveState.CANCELLED,
+    }),
+    ObjectiveState.AWAITING_APPROVAL: frozenset({
+        ObjectiveState.RUNNING, ObjectiveState.BLOCKED, ObjectiveState.PAUSED,
         ObjectiveState.CANCELLED,
     }),
-    ObjectiveState.RECOVERING: frozenset({
-        ObjectiveState.READY, ObjectiveState.PLANNING, ObjectiveState.EXECUTING,
-        ObjectiveState.NEEDS_INPUT, ObjectiveState.BLOCKED, ObjectiveState.FAILED,
+    ObjectiveState.PAUSED: frozenset({
+        ObjectiveState.READY, ObjectiveState.RUNNING, ObjectiveState.BLOCKED,
         ObjectiveState.CANCELLED,
     }),
     ObjectiveState.BLOCKED: frozenset({
-        ObjectiveState.READY, ObjectiveState.PLANNING, ObjectiveState.CANCELLED,
+        ObjectiveState.READY, ObjectiveState.RUNNING, ObjectiveState.AWAITING_APPROVAL,
+        ObjectiveState.FAILED, ObjectiveState.CANCELLED,
     }),
     ObjectiveState.COMPLETED: frozenset(),
     ObjectiveState.FAILED: frozenset(),
@@ -79,25 +80,33 @@ _OBJECTIVE_TRANSITIONS: dict[ObjectiveState, frozenset[ObjectiveState]] = {
 }
 
 _TASK_TRANSITIONS: dict[TaskState, frozenset[TaskState]] = {
-    TaskState.PENDING: frozenset({TaskState.READY, TaskState.BLOCKED, TaskState.CANCELLED}),
-    TaskState.READY: frozenset({
-        TaskState.RUNNING, TaskState.WAITING_FOR_APPROVAL,
-        TaskState.BLOCKED, TaskState.CANCELLED,
-    }),
-    TaskState.RUNNING: frozenset({
-        TaskState.WAITING_FOR_APPROVAL, TaskState.VERIFYING,
-        TaskState.BLOCKED, TaskState.FAILED, TaskState.CANCELLED,
-    }),
-    TaskState.WAITING_FOR_APPROVAL: frozenset({
+    TaskState.PROPOSED: frozenset({
         TaskState.READY, TaskState.BLOCKED, TaskState.CANCELLED,
     }),
-    TaskState.VERIFYING: frozenset({
-        TaskState.SUCCEEDED, TaskState.READY, TaskState.FAILED,
+    TaskState.READY: frozenset({
+        TaskState.AWAITING_APPROVAL, TaskState.RUNNING, TaskState.BLOCKED,
+        TaskState.CANCELLED,
+    }),
+    TaskState.AWAITING_APPROVAL: frozenset({
+        TaskState.READY, TaskState.RUNNING, TaskState.BLOCKED, TaskState.CANCELLED,
+    }),
+    TaskState.RUNNING: frozenset({
+        TaskState.VERIFYING, TaskState.RECONCILING, TaskState.FAILED,
         TaskState.BLOCKED, TaskState.CANCELLED,
+    }),
+    TaskState.VERIFYING: frozenset({
+        TaskState.SUCCEEDED, TaskState.FAILED, TaskState.RECONCILING, TaskState.BLOCKED,
+    }),
+    TaskState.RECONCILING: frozenset({
+        TaskState.VERIFYING, TaskState.READY, TaskState.BLOCKED,
+        TaskState.FAILED, TaskState.CANCELLED,
     }),
     TaskState.SUCCEEDED: frozenset(),
     TaskState.FAILED: frozenset(),
-    TaskState.BLOCKED: frozenset({TaskState.READY, TaskState.CANCELLED}),
+    TaskState.BLOCKED: frozenset({
+        TaskState.READY, TaskState.AWAITING_APPROVAL, TaskState.FAILED,
+        TaskState.CANCELLED,
+    }),
     TaskState.CANCELLED: frozenset(),
 }
 

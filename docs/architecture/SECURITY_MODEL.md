@@ -1,6 +1,6 @@
 # SYNAPSE — Security Model
 
-**Status:** Draft — pending architecture review
+**Status:** Consolidated architecture draft — review required
 **Milestone:** 0 — Specification
 
 ## 1. Purpose
@@ -255,20 +255,29 @@ Required tests include:
 Security tests must assert actual enforcement rather than merely checking
 that a policy decision was logged.
 
-## 16. Open decisions
+## 16. Risk tiers and contextual escalation
 
-The following require further review:
-- Initial authentication mechanism and principal model.
-- Risk classification and action policy format.
-- Exact approval workflow.
-- Windows-compatible isolation options.
-- Audit integrity and retention guarantees.
-- Network allowlisting strategy.
-- Artifact scanning and safe parsing requirements.
-- Incident response and credential rotation procedures.
+- **R0:** read-only, non-sensitive reads and harmless computation.
+- **R1:** low-impact, scoped, reversible changes.
+- **R2:** high-impact, sensitive-data, privileged, significant external, or otherwise consequential changes; stronger authorization and approval apply where policy requires.
+- **R3:** critical or prohibited actions. Deny by default. An explicitly permitted critical action requires exceptional controls; prohibited actions remain denied and cannot be approved into permission.
 
-## 17. Approval status
+Risk assessment considers the action, target sensitivity, scope, privilege, reversibility, cumulative impact, and current context. Risk can be escalated, never lowered solely because a model or planner labels an action low-risk. Deny-overrides applies: the strictest applicable policy wins. Record the classification and rationale.
 
-Draft only. This security model must be reconciled with the component
-contracts, state machine, data architecture, and acceptance criteria before
-Milestone 0 can be approved.
+## 17. Exact-action authorization and approval
+
+Authorization must bind the authenticated principal, canonical action and parameters, target and scope, objective/task, execution attempt, risk classification, validity period, and required approval reference. The executor independently validates that authorization immediately before execution. Permissions or state changed since planning require reevaluation. A materially changed action cannot reuse prior authorization.
+
+Approvers must be authenticated and explicitly scoped. Approval binds to the exact canonical action, parameters, target/scope, task, and attempt; it records approver, decision, timestamp, expiry, constraints, and revocation state. The initiating agent cannot self-approve. Approval is not a substitute for policy authorization and cannot override a prohibited action.
+
+Missing, invalid, expired, revoked, mismatched, or unverifiable authorization fails closed. If approval is required but unavailable, the task waits for approval or is blocked; denial is recorded. A replacement action requires fresh policy evaluation and approval if required. During a policy-service outage, consequential execution remains blocked unless authorization can be independently validated through an explicitly specified safe mechanism.
+
+## 18. Audit integrity and unresolved deployment details
+
+The normal audit model is append-only, with mutation/deletion restricted and auditable. Events should be hash-linked or otherwise tamper-evident, and integrity checkpoints should be held under separately controlled access. Hashes can reveal certain changes but do not prove that a recorded event is true or that the originating actor was legitimate. Legal retention/deletion exceptions must be documented and must not silently erase required evidence. Required audit persistence failure blocks unsafe continuation.
+
+Selected security baseline includes deny-by-default, least privilege, R0–R3 risk tiers, contextual escalation, exact-action authorization, authenticated scoped approval, execution-time revalidation, fail-closed behavior, and audit integrity controls. Deferred deployment details include the concrete authentication provider/principal store, Windows-compatible isolation mechanism, network allowlists, retention periods, incident-response runbooks, and cryptographic key management. These details must be resolved before exposing consequential capabilities beyond a controlled development environment.
+
+## 19. Approval status
+
+Consolidated draft. Cross-document review and implementation-specific threat-model validation remain required before Milestone 0 can be approved.

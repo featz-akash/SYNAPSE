@@ -69,7 +69,7 @@ def test_create_task_persists_task_under_existing_objective(engine):
 
         assert record is not None
         assert record.objective_id == objective.id
-        assert record.state == "pending"
+        assert record.state == "proposed"
 
 
 def test_create_task_generates_id_when_not_supplied(engine):

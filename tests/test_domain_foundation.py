@@ -59,9 +59,9 @@ def test_objective_rejects_boolean_revision() -> None:
 def test_objective_transition_advances_revision() -> None:
     objective = make_objective()
     result = ObjectiveStateMachine.transition(
-        objective, ObjectiveState.CREATED, ObjectiveState.VALIDATING, expected_revision=0
+        objective, ObjectiveState.DRAFT, ObjectiveState.READY, expected_revision=0
     )
-    assert result is ObjectiveState.VALIDATING
+    assert result is ObjectiveState.READY
     assert objective.revision == 1
 
 
@@ -123,11 +123,11 @@ def test_task_verification_then_success() -> None:
 def test_stale_revision_is_rejected_without_increment() -> None:
     objective = make_objective()
     ObjectiveStateMachine.transition(
-        objective, ObjectiveState.CREATED, ObjectiveState.VALIDATING, expected_revision=0
+        objective, ObjectiveState.DRAFT, ObjectiveState.READY, expected_revision=0
     )
     with pytest.raises(StaleRevisionError):
         ObjectiveStateMachine.transition(
-            objective, ObjectiveState.VALIDATING, ObjectiveState.READY, expected_revision=0
+            objective, ObjectiveState.READY, ObjectiveState.NEEDS_INPUT, expected_revision=0
         )
     assert objective.revision == 1
 
@@ -138,7 +138,7 @@ def test_state_machine_rejects_invalid_state_type_without_mutation() -> None:
         ObjectiveStateMachine.transition(
             objective,
             "created",  # type: ignore[arg-type]
-            ObjectiveState.VALIDATING,
+            ObjectiveState.READY,
             expected_revision=0,
         )
     assert objective.revision == 0
@@ -148,7 +148,7 @@ def test_state_machine_rejects_boolean_expected_revision() -> None:
     objective = make_objective()
     with pytest.raises(ValidationDomainError):
         ObjectiveStateMachine.transition(
-            objective, ObjectiveState.CREATED, ObjectiveState.VALIDATING,
+            objective, ObjectiveState.DRAFT, ObjectiveState.READY,
             expected_revision=True,
         )
     assert objective.revision == 0

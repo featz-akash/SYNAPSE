@@ -1,6 +1,6 @@
 # SYNAPSE — Data Architecture
 
-**Status:** Draft — pending architecture review
+**Status:** Consolidated architecture draft — review required
 **Milestone:** 0 — Specification
 **Primary database:** PostgreSQL
 
@@ -297,20 +297,20 @@ execution correlation, and audit queries.
 Avoid speculative indexing and premature database specialization. Validate
 index choices using representative workloads and query plans.
 
-## 12. Open decisions
+## 12. Selected data decisions and deferred details
 
-The following require further design:
-- Exact entities, fields, constraints, and relationships.
-- Which evidence types belong in the database versus artifact storage.
-- Audit immutability and tamper-evidence requirements.
-- Retention and deletion policies.
-- Isolation levels and concurrency strategy.
-- Backup and recovery objectives.
-- Indexes and expected data volumes.
-- How artifact references remain valid across backup and restoration.
+Selected baseline:
+- PostgreSQL is authoritative for structured objective/task state, action intents and attempts, authorization references, verification results, belief assessments/revisions, checkpoints, and audit metadata. Artifact bytes may live in controlled storage with verifiable references.
+- Related authoritative state and required audit event commit atomically in one PostgreSQL transaction. An attempted transition must not imply a committed transition. Downstream delivery uses a transactional outbox or equivalent stable-ID/idempotent mechanism.
+- External effects cannot generally be atomic with PostgreSQL. Durable intent precedes consequential execution; observations and verification are separate records; uncertain outcomes are reconciled before retry.
+- Optimistic version checks or equivalent locking prevent silent overwrites of objective/task state and belief revisions. Duplicate scheduling of non-repeatable actions must be prevented at the persistence/controller boundary.
+- Recovery validates checkpoint and audit integrity, preserves newer audit evidence, and reconciles pending/uncertain effects before resuming. Inconsistent recovered state is quarantined and consequential work remains blocked until consistency checks pass.
+- Audit is append-only in normal operation, tamper-evident through hashes/chaining and independently controlled checkpoints, with documented lawful retention/deletion exceptions. Hashes do not prove truth.
+- Backups require integrity checks and tested restoration; post-restore consistency/audit checks precede consequential execution. RPO/RTO are deployment requirements and must not be invented here.
+- Retention is differentiated for raw evidence, derived artifacts, assessment history, action/approval records, checkpoints, audit, and telemetry. Deletion must follow applicable legal/privacy requirements while preserving only permitted metadata and distinguishing deleted, expired, inaccessible, never-collected, and integrity-failed content.
+
+Deferred implementation details: exact table/field definitions and indexes, artifact storage backend, transaction isolation/locking choices, numeric retention periods, backup frequency, RPO/RTO, and workload sizing. Choose and test these before schema or production-readiness approval. The selected invariants above are not deferred.
 
 ## 13. Approval status
 
-Draft only. The logical data model must be reconciled with the component
-contracts, state machine, belief revision, security model, and acceptance
-criteria before schema implementation is authorized.
+Consolidated draft. The logical data model and schema remain unauthorized for implementation until Milestone 0 is explicitly approved.

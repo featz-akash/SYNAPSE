@@ -1,6 +1,6 @@
 # SYNAPSE — System Overview
 
-**Status:** Draft — pending architecture review
+**Status:** Consolidated architecture draft — review required
 **Milestone:** 0 — Specification
 **Architecture style:** Python modular monolith
 **Primary data store:** PostgreSQL
@@ -183,10 +183,23 @@ does not independently establish general intelligence. Claims about
 reasoning quality, autonomy, reliability, and uncertainty calibration must be
 supported by reproducible evaluation.
 
-## 12. Approval status
+## 12. Canonical authority, risk, and recovery baseline
 
-This document is a draft. It does not authorize implementation of the
-reasoning engine, autonomous controller, or database schema.
+The controller is the only component that commits authoritative execution state. The planner and model gateway may propose work or interpretations but cannot grant permission, execute tools, or declare success. The policy engine evaluates proposed actions independently. The executor performs only the exact action authorized for the current task and attempt. The verifier compares observed results with explicit success criteria. PostgreSQL is authoritative for durable structured state.
+
+Actions use four risk tiers: **R0** read-only/non-sensitive reads or harmless computation; **R1** low-impact, scoped, reversible changes; **R2** high-impact, sensitive, privileged, or significant external changes; **R3** critical or prohibited actions. R3 is denied by default; explicitly permitted critical actions require exceptional controls. Prohibited actions remain denied even if a human approves. Risk may be escalated based on context and cumulative impact; model-supplied labels cannot lower it, and stricter policy wins.
+
+Authorization is bound to the authenticated principal, canonical action and parameters, target/scope, task, attempt, risk decision, validity period, and any required approval. Approval is authenticated, scoped, expiring, revocable, and revalidated immediately before execution. Material action changes require fresh evaluation. Missing or unverifiable authorization fails closed.
+
+Consequential external effects use durable intent, action/attempt history, observed outcomes, verification, and controller-committed state. PostgreSQL and external systems are not assumed to share an atomic transaction. Recovery reconciles uncertain side effects before replay and escalates when safe reconciliation is impossible. State transition and required audit event commit atomically in PostgreSQL; downstream delivery uses a transactional outbox or equivalent idempotent pattern. Audit is append-only in normal operation, with tamper-evident hashes and independently controlled checkpoints; hashes do not prove the truth of an event.
+
+## 13. Deferred infrastructure and operational values
+
+The initial architecture is a Python modular monolith with PostgreSQL as the authoritative structured store. Separate graph/vector databases, brokers, distributed workers, and multiple model providers are deferred until measured needs justify them. Safety, authorization, verification, provenance, audit, and recovery are not deferred. Numeric latency/completion thresholds, budget defaults, retry limits, reconciliation deadlines, RPO/RTO, and workload sizes remain unresolved until requirements and representative baselines are established.
+
+## 14. Approval status
+
+This consolidated draft does not authorize implementation of the reasoning engine, autonomous controller, or database schema.
 
 Milestone 0 may be approved only after the related architecture documents,
 security boundaries, acceptance criteria, recovery behavior, and unresolved

@@ -57,7 +57,7 @@ def test_concurrent_opposing_dependencies_cannot_commit_cycle() -> None:
                 title="Dependency concurrency test",
                 description="",
                 success_criteria=["concurrent cycle is rejected"],
-                state="created",
+                state="draft",
                 revision=0,
             )
             objective.tasks.extend(
@@ -66,14 +66,14 @@ def test_concurrent_opposing_dependencies_cannot_commit_cycle() -> None:
                         id=task_a_id,
                         title="Task A",
                         description="",
-                        state="pending",
+                        state="proposed",
                         revision=0,
                     ),
                     TaskRecord(
                         id=task_b_id,
                         title="Task B",
                         description="",
-                        state="pending",
+                        state="proposed",
                         revision=0,
                     ),
                 ]
@@ -223,7 +223,7 @@ def test_ready_transition_waits_for_objective_dependency_lock() -> None:
                 title="Readiness lock test",
                 description="",
                 success_criteria=["readiness coordinates with dependency edits"],
-                state="created",
+                state="draft",
                 revision=0,
             )
             objective.tasks.append(
@@ -231,7 +231,7 @@ def test_ready_transition_waits_for_objective_dependency_lock() -> None:
                     id=task_id,
                     title="Task awaiting readiness",
                     description="",
-                    state="pending",
+                    state="proposed",
                     revision=0,
                 )
             )

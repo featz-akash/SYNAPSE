@@ -1,6 +1,6 @@
 # SYNAPSE — Benchmark Plan
 
-**Status:** Draft — pending architecture review
+**Status:** Consolidated architecture draft — review required
 **Milestone:** 0 — Specification
 
 ## 1. Purpose
@@ -130,7 +130,29 @@ Measure:
 
 Performance thresholds must be set after a baseline workload is defined.
 
-## 4. Test datasets and fixtures
+## 4. Acceptance-criteria traceability
+
+The following mapping connects the stable `SYN-*` acceptance IDs to benchmark or test-plan coverage. Component and integration tests may provide the primary evidence for some requirements; those results must still be reported using the same IDs. A requirement without recorded evidence remains untested, not passed.
+
+| Acceptance ID | Planned evaluation coverage |
+|---|---|
+| `SYN-STATE-001` | Component correctness; controller/authority boundary tests |
+| `SYN-STATE-002` | Component correctness; allowed/forbidden state-transition tests |
+| `SYN-STATE-003` | Verification quality; persistence-failure injection |
+| `SYN-AUTH-001` | Security and policy enforcement; unauthorized/prohibited action tests |
+| `SYN-AUTH-002` | Security and policy enforcement; approval scope, expiry, revocation, and execution-time revalidation |
+| `SYN-AUTH-003` | Security and policy enforcement; contextual risk escalation and deny-overrides |
+| `SYN-AUDIT-001` | Failure recovery; atomic state/audit transaction failure injection |
+| `SYN-REC-001` | Failure recovery; uncertain side effects, timeout/crash, and retry safety |
+| `SYN-REC-002` | Failure recovery; corrupt or inconsistent restored-state quarantine |
+| `SYN-BELIEF-001` | Belief revision and contradictions; version history and revision rationale |
+| `SYN-BELIEF-002` | Belief revision and contradictions; contradictory evidence and abstention fixtures |
+| `SYN-DATA-001` | Operational reliability; concurrent PostgreSQL update/conflict tests |
+| `SYN-SEC-001` | Security and policy enforcement; prompt injection and untrusted-output tests |
+| `SYN-BUDGET-001` | Autonomous objective pursuit; budget/retry exhaustion tests |
+| `SYN-TEST-001` | Reproducibility and reporting; passed/failed/skipped/untested outcome audit |
+
+## 5. Test datasets and fixtures
 
 Begin with version-controlled synthetic fixtures whose expected answers and
 provenance are known.
@@ -151,7 +173,7 @@ External datasets may be introduced when they materially improve evaluation.
 Their licensing, provenance, contamination risk, and evaluation suitability
 must be documented.
 
-## 5. Experimental controls
+## 6. Experimental controls
 
 Each benchmark run should record:
 - SYNAPSE commit identifier.
@@ -167,7 +189,7 @@ Each benchmark run should record:
 Model-dependent results should be repeated when variability is material.
 Deterministic tests should remain deterministic wherever practical.
 
-## 6. Metrics and reporting
+## 7. Metrics and reporting
 
 Report raw counts and rates with denominators.
 
@@ -191,7 +213,7 @@ regression.
 Confidence intervals or repeated trials should be used when sample size and
 evaluation variability justify them.
 
-## 7. Baselines and regression testing
+## 8. Baselines and regression testing
 
 Establish an initial baseline before optimizing planners, model prompts,
 retrieval, or action selection.
@@ -203,7 +225,7 @@ Compare results using the same task set and equivalent conditions wherever
 possible. Explain differences in configuration before attributing improvement
 to a code change.
 
-## 8. Initial evaluation stages
+## 9. Initial evaluation stages
 
 ### Stage A — Component correctness
 
@@ -230,7 +252,7 @@ benchmark cases and documented conditions.
 Progression between stages requires review of failures and limitations.
 Passing one stage does not automatically establish readiness for another.
 
-## 9. Initial thresholds
+## 10. Initial thresholds
 
 Some criteria can be specified immediately:
 - Zero unauthorized executions in the defined security test suite.
@@ -244,19 +266,14 @@ representative fixtures and a baseline before numeric targets are finalized.
 
 These thresholds apply to the defined tests; they are not universal guarantees.
 
-## 10. Open decisions
+## 11. Reproducibility, reporting, and decision status
 
-The following remain unresolved:
-- Initial benchmark size and composition.
-- Minimum sample size for model-dependent evaluations.
-- Performance targets and supported workload.
-- Calibration metrics and minimum acceptable calibration quality.
-- External datasets and their licenses.
-- Regression gates for each release stage.
-- Statistical methods for comparisons.
-- Independent review requirements for high-impact capabilities.
+Every run records the SYNAPSE commit, benchmark/fixture version, runtime and dependency versions, database/migration version, model/provider/settings where applicable, tool permissions, budgets, random seeds where supported, environment, execution time, raw counts, denominators, and known limitations. Preserve failures as regression fixtures when reproducible. Use confidence intervals or repeated trials when sample size and variability justify them; document the chosen statistical method.
 
-## 11. Approval status
+**Selected gates for the defined test suite:** zero unauthorized executions; zero model-only verified completions; zero silent loss of prior assessment versions; zero blind replay of uncertain non-idempotent actions; and zero silent concurrent overwrite in covered tests. Any critical safety failure blocks acceptance regardless of aggregate score. A passing finite suite is not a universal safety guarantee.
 
-Draft only. The benchmark plan must align with the acceptance criteria and
-the approved architecture before it becomes an implementation gate.
+**Deferred pending workload characterization:** benchmark size/composition, minimum sample sizes, supported workload, latency and completion thresholds, retrieval-quality thresholds, calibration targets, external datasets/licensing, stage-specific regression gates, statistical comparison method, and independent-review requirements. Do not invent numerical targets. Establish a representative baseline first, then record thresholds with rationale, sample sizes, and decision criteria before using them as release gates.
+
+## 12. Approval status
+
+Consolidated draft. The acceptance-ID traceability mapping has been cross-checked against the current acceptance register; actual test evidence is still required during implementation. Numeric performance targets remain intentionally unresolved until baseline characterization. Milestone 0 remains unapproved pending owner review.

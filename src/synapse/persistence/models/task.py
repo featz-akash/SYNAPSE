@@ -53,8 +53,8 @@ class TaskRecord(Base):
     __table_args__ = (
         CheckConstraint("revision >= 0", name="ck_tasks_revision_nonnegative"),
         CheckConstraint(
-            "state IN ('pending', 'ready', 'running', 'waiting_for_approval', "
-            "'verifying', 'succeeded', 'failed', 'blocked', 'cancelled')",
+            "state IN ('proposed', 'ready', 'awaiting_approval', 'running', "
+            "'verifying', 'reconciling', 'succeeded', 'failed', 'blocked', 'cancelled')",
             name="ck_tasks_state",
         ),
         UniqueConstraint("objective_id", "id", name="uq_tasks_objective_id_id"),
@@ -69,7 +69,7 @@ class TaskRecord(Base):
     )
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    state: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    state: Mapped[str] = mapped_column(String(32), nullable=False, default="proposed")
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     __mapper_args__ = {"version_id_col": revision}
     created_at: Mapped[datetime] = mapped_column(

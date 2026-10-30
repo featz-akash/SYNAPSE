@@ -33,9 +33,28 @@ already exist.
    authorization, fabricate tool outcomes, or declare verification successful.
 9. Components communicate through explicit contracts.
 10. The initial implementation must remain small enough to test and inspect.
-11. Existing SYNAPSE source code is outside this project's modification scope.
+11. The existing SYNAPSE repository is the project's implementation baseline. Its modification is governed by the repository modification scope defined in Section 2.1.
 12. Architecture decisions must be validated through tests and measurable
     evaluation rather than assumed to work.
+
+### 2.1 Repository modification scope
+
+The existing SYNAPSE repository, including its source code, tests, configuration, and documentation, is within the project boundary and serves as the implementation baseline.
+
+Modifications are permitted under the following conditions:
+
+1. Changes must be traceable to an approved milestone, an accepted architecture decision, a documented requirement, or a necessary defect correction.
+2. Existing functionality and established component contracts must be preserved unless an approved change explicitly requires modification.
+3. Changes must remain limited to the files and components necessary for the intended work.
+4. Unrelated refactoring, unnecessary file deletion, and unrelated dependency changes are outside the scope of an individual implementation task.
+5. Changes affecting public interfaces, persistence contracts, security boundaries, or existing behavior require explicit review.
+6. New and modified functionality must have appropriate automated tests.
+7. Relevant architecture documents, implementation specifications, and test evidence must be updated when a change affects them.
+8. Existing functionality must not be assumed to be obsolete merely because a new implementation is proposed.
+
+This policy authorizes controlled evolution of the existing SYNAPSE repository. It does not authorize unrestricted modifications or bypass the approval requirements of individual milestones.
+
+Changes to external systems, third-party dependencies, generated artifacts, or user-controlled resources remain subject to their respective authorization and project policies.
 
 ## 3. System boundary
 

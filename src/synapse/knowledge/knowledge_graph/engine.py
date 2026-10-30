@@ -1,3 +1,4 @@
+
 """In-memory knowledge graph with explicit reference integrity."""
 
 from __future__ import annotations
@@ -5,7 +6,7 @@ from __future__ import annotations
 from collections import deque
 from threading import RLock
 
-from synapse.domain.claims import Claim
+from synapse.domain.claims import Claim, ClaimEntityGrounding
 from synapse.domain.contracts import EvidenceArtifact
 from synapse.domain.errors import ResourceNotFoundError, ValidationDomainError
 from synapse.domain.evidence import EvidenceLink
@@ -27,7 +28,14 @@ class KnowledgeGraph:
         self._artifacts: dict[str, EvidenceArtifact] = {}
         self._relationships: dict[str, Relationship] = {}
         self._evidence_links: dict[str, EvidenceLink] = {}
+        self._claim_entity_groundings: dict[
+            str, ClaimEntityGrounding
+        ] = {}
         self._lock = RLock()
+
+    # ---------------------------------------------------------
+    # Internal validation and insertion
+    # ---------------------------------------------------------
 
     @staticmethod
     def _require_id(value: object, field_name: str) -> str:
@@ -56,15 +64,66 @@ class KnowledgeGraph:
         collection[record_id] = record
         return record
 
+    def _require_entity(self, entity_id: str) -> Entity:
+        entity = self._entities.get(entity_id)
+
+        if entity is None:
+            raise ResourceNotFoundError(
+                "Entity does not exist.",
+                details={"entity_id": entity_id},
+            )
+
+        return entity
+
+    def _require_claim(self, claim_id: str) -> Claim:
+        claim = self._claims.get(claim_id)
+
+        if claim is None:
+            raise ResourceNotFoundError(
+                "Claim does not exist.",
+                details={"claim_id": claim_id},
+            )
+
+        return claim
+
+    def _require_artifact(self, artifact_id: str) -> EvidenceArtifact:
+        artifact = self._artifacts.get(artifact_id)
+
+        if artifact is None:
+            raise ResourceNotFoundError(
+                "Evidence artifact does not exist.",
+                details={"artifact_id": artifact_id},
+            )
+
+        return artifact
+
+    # ---------------------------------------------------------
+    # Entity operations
+    # ---------------------------------------------------------
+
     def add_entity(self, entity: Entity) -> Entity:
         if not isinstance(entity, Entity):
             raise ValidationDomainError("entity must be an Entity.")
 
         with self._lock:
             self._insert(
-                self._entities, entity, entity.id, "Entity"
+                self._entities,
+                entity,
+                entity.id,
+                "Entity",
             )
+
         return entity
+
+    def get_entity(self, entity_id: str) -> Entity:
+        entity_id = self._require_id(entity_id, "entity_id")
+
+        with self._lock:
+            return self._require_entity(entity_id)
+
+    # ---------------------------------------------------------
+    # Claim operations
+    # ---------------------------------------------------------
 
     def add_claim(self, claim: Claim) -> Claim:
         if not isinstance(claim, Claim):
@@ -72,11 +131,28 @@ class KnowledgeGraph:
 
         with self._lock:
             self._insert(
-                self._claims, claim, claim.id, "Claim"
+                self._claims,
+                claim,
+                claim.id,
+                "Claim",
             )
+
         return claim
 
-    def add_artifact(self, artifact: EvidenceArtifact) -> EvidenceArtifact:
+    def get_claim(self, claim_id: str) -> Claim:
+        claim_id = self._require_id(claim_id, "claim_id")
+
+        with self._lock:
+            return self._require_claim(claim_id)
+
+    # ---------------------------------------------------------
+    # Evidence artifact operations
+    # ---------------------------------------------------------
+
+    def add_artifact(
+        self,
+        artifact: EvidenceArtifact,
+    ) -> EvidenceArtifact:
         if not isinstance(artifact, EvidenceArtifact):
             raise ValidationDomainError(
                 "artifact must be an EvidenceArtifact."
@@ -84,9 +160,23 @@ class KnowledgeGraph:
 
         with self._lock:
             self._insert(
-                self._artifacts, artifact, artifact.id, "EvidenceArtifact"
+                self._artifacts,
+                artifact,
+                artifact.id,
+                "EvidenceArtifact",
             )
+
         return artifact
+
+    def get_artifact(self, artifact_id: str) -> EvidenceArtifact:
+        artifact_id = self._require_id(artifact_id, "artifact_id")
+
+        with self._lock:
+            return self._require_artifact(artifact_id)
+
+    # ---------------------------------------------------------
+    # Relationship operations
+    # ---------------------------------------------------------
 
     def add_relationship(
         self,
@@ -110,7 +200,54 @@ class KnowledgeGraph:
 
         return relationship
 
-    def add_evidence_link(self, link: EvidenceLink) -> EvidenceLink:
+    def get_relationship(
+        self,
+        relationship_id: str,
+    ) -> Relationship:
+        relationship_id = self._require_id(
+            relationship_id,
+            "relationship_id",
+        )
+
+        with self._lock:
+            relationship = self._relationships.get(relationship_id)
+
+            if relationship is None:
+                raise ResourceNotFoundError(
+                    "Relationship does not exist.",
+                    details={"relationship_id": relationship_id},
+                )
+
+            return relationship
+
+    def relationships_for(
+        self,
+        entity_id: str,
+    ) -> tuple[Relationship, ...]:
+        entity_id = self._require_id(entity_id, "entity_id")
+
+        with self._lock:
+            self._require_entity(entity_id)
+
+            matches = (
+                relationship
+                for relationship in self._relationships.values()
+                if (
+                    relationship.source_entity_id == entity_id
+                    or relationship.target_entity_id == entity_id
+                )
+            )
+
+            return tuple(sorted(matches, key=lambda item: item.id))
+
+    # ---------------------------------------------------------
+    # Evidence link operations
+    # ---------------------------------------------------------
+
+    def add_evidence_link(
+        self,
+        link: EvidenceLink,
+    ) -> EvidenceLink:
         if not isinstance(link, EvidenceLink):
             raise ValidationDomainError(
                 "link must be an EvidenceLink."
@@ -129,38 +266,9 @@ class KnowledgeGraph:
 
         return link
 
-    def get_entity(self, entity_id: str) -> Entity:
-        entity_id = self._require_id(entity_id, "entity_id")
-        with self._lock:
-            return self._require_entity(entity_id)
-
-    def get_claim(self, claim_id: str) -> Claim:
-        claim_id = self._require_id(claim_id, "claim_id")
-        with self._lock:
-            return self._require_claim(claim_id)
-
-    def get_artifact(self, artifact_id: str) -> EvidenceArtifact:
-        artifact_id = self._require_id(artifact_id, "artifact_id")
-        with self._lock:
-            return self._require_artifact(artifact_id)
-
-    def get_relationship(self, relationship_id: str) -> Relationship:
-        relationship_id = self._require_id(
-            relationship_id, "relationship_id"
-        )
-        with self._lock:
-            relationship = self._relationships.get(relationship_id)
-
-            if relationship is None:
-                raise ResourceNotFoundError(
-                    "Relationship does not exist.",
-                    details={"relationship_id": relationship_id},
-                )
-
-            return relationship
-
     def get_evidence_link(self, link_id: str) -> EvidenceLink:
         link_id = self._require_id(link_id, "link_id")
+
         with self._lock:
             link = self._evidence_links.get(link_id)
 
@@ -172,23 +280,10 @@ class KnowledgeGraph:
 
             return link
 
-    def relationships_for(self, entity_id: str) -> tuple[Relationship, ...]:
-        entity_id = self._require_id(entity_id, "entity_id")
-
-        with self._lock:
-            self._require_entity(entity_id)
-
-            matches = (
-                relationship
-                for relationship in self._relationships.values()
-                if (
-                    relationship.source_entity_id == entity_id
-                    or relationship.target_entity_id == entity_id
-                )
-            )
-            return tuple(sorted(matches, key=lambda item: item.id))
-
-    def evidence_for_claim(self, claim_id: str) -> tuple[EvidenceLink, ...]:
+    def evidence_for_claim(
+        self,
+        claim_id: str,
+    ) -> tuple[EvidenceLink, ...]:
         claim_id = self._require_id(claim_id, "claim_id")
 
         with self._lock:
@@ -199,14 +294,110 @@ class KnowledgeGraph:
                 for link in self._evidence_links.values()
                 if link.claim_id == claim_id
             )
+
             return tuple(sorted(matches, key=lambda item: item.id))
+
+    # ---------------------------------------------------------
+    # Claim-entity grounding operations
+    # ---------------------------------------------------------
+
+    def add_claim_entity_grounding(
+        self,
+        grounding: ClaimEntityGrounding,
+    ) -> ClaimEntityGrounding:
+        """
+        Store a grounding after validating its claim and entity references.
+
+        If character offsets are supplied, the mention must match the
+        corresponding text in the claim proposition.
+        """
+
+        if not isinstance(grounding, ClaimEntityGrounding):
+            raise ValidationDomainError(
+                "grounding must be a ClaimEntityGrounding."
+            )
+
+        with self._lock:
+            claim = self._require_claim(grounding.claim_id)
+            self._require_entity(grounding.entity_id)
+
+            if (
+                grounding.start_char is not None
+                and grounding.end_char is not None
+            ):
+                actual_text = claim.proposition[
+                    grounding.start_char:grounding.end_char
+                ]
+
+                if actual_text != grounding.mention_text:
+                    raise ValidationDomainError(
+                        "Grounding character span does not match "
+                        "claim proposition.",
+                        details={
+                            "claim_id": grounding.claim_id,
+                            "mention_text": grounding.mention_text,
+                            "actual_text": actual_text,
+                        },
+                    )
+
+            self._insert(
+                self._claim_entity_groundings,
+                grounding,
+                grounding.id,
+                "ClaimEntityGrounding",
+            )
+
+        return grounding
+
+    def get_claim_entity_grounding(
+        self,
+        grounding_id: str,
+    ) -> ClaimEntityGrounding:
+        grounding_id = self._require_id(
+            grounding_id,
+            "grounding_id",
+        )
+
+        with self._lock:
+            grounding = self._claim_entity_groundings.get(grounding_id)
+
+            if grounding is None:
+                raise ResourceNotFoundError(
+                    "Claim entity grounding does not exist.",
+                    details={"grounding_id": grounding_id},
+                )
+
+            return grounding
+
+    def groundings_for_claim(
+        self,
+        claim_id: str,
+    ) -> tuple[ClaimEntityGrounding, ...]:
+        claim_id = self._require_id(claim_id, "claim_id")
+
+        with self._lock:
+            self._require_claim(claim_id)
+
+            matches = (
+                grounding
+                for grounding in self._claim_entity_groundings.values()
+                if grounding.claim_id == claim_id
+            )
+
+            return tuple(sorted(matches, key=lambda item: item.id))
+
+    # ---------------------------------------------------------
+    # Graph traversal
+    # ---------------------------------------------------------
 
     def neighbors(self, entity_id: str) -> tuple[Entity, ...]:
         """Return directly connected entities in either direction."""
+
         entity_id = self._require_id(entity_id, "entity_id")
 
         with self._lock:
             self._require_entity(entity_id)
+
             neighbor_ids: set[str] = set()
 
             for relationship in self._relationships.values():
@@ -233,8 +424,10 @@ class KnowledgeGraph:
         Traversal follows relationships in either direction. The starting
         entity is excluded from the returned tuple.
         """
+
         start_entity_id = self._require_id(
-            start_entity_id, "start_entity_id"
+            start_entity_id,
+            "start_entity_id",
         )
 
         if (
@@ -254,12 +447,14 @@ class KnowledgeGraph:
             discovered: list[str] = []
 
             adjacency: dict[str, set[str]] = {
-                entity_id: set() for entity_id in self._entities
+                entity_id: set()
+                for entity_id in self._entities
             }
 
             for relationship in self._relationships.values():
                 source = relationship.source_entity_id
                 target = relationship.target_entity_id
+
                 adjacency[source].add(target)
                 adjacency[target].add(source)
 
@@ -282,8 +477,13 @@ class KnowledgeGraph:
                 for entity_id in discovered
             )
 
+    # ---------------------------------------------------------
+    # Graph statistics
+    # ---------------------------------------------------------
+
     def counts(self) -> dict[str, int]:
         """Return a snapshot of graph record counts."""
+
         with self._lock:
             return {
                 "entities": len(self._entities),
@@ -291,31 +491,7 @@ class KnowledgeGraph:
                 "artifacts": len(self._artifacts),
                 "relationships": len(self._relationships),
                 "evidence_links": len(self._evidence_links),
+                "claim_entity_groundings": len(
+                    self._claim_entity_groundings
+                ),
             }
-
-    def _require_entity(self, entity_id: str) -> Entity:
-        entity = self._entities.get(entity_id)
-        if entity is None:
-            raise ResourceNotFoundError(
-                "Entity does not exist.",
-                details={"entity_id": entity_id},
-            )
-        return entity
-
-    def _require_claim(self, claim_id: str) -> Claim:
-        claim = self._claims.get(claim_id)
-        if claim is None:
-            raise ResourceNotFoundError(
-                "Claim does not exist.",
-                details={"claim_id": claim_id},
-            )
-        return claim
-
-    def _require_artifact(self, artifact_id: str) -> EvidenceArtifact:
-        artifact = self._artifacts.get(artifact_id)
-        if artifact is None:
-            raise ResourceNotFoundError(
-                "Evidence artifact does not exist.",
-                details={"artifact_id": artifact_id},
-            )
-        return artifact

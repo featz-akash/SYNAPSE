@@ -286,6 +286,7 @@ def test_graph_counts(
         "artifacts": 0,
         "relationships": 0,
         "evidence_links": 0,
+        "claim_entity_groundings": 0,
     }
 
 

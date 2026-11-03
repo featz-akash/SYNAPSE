@@ -3,14 +3,13 @@
 **Status:** Consolidated architecture draft — review required
 **Milestone:** 0 — Specification
 
+---
+
 ## 1. Purpose
 
-Define how SYNAPSE represents claims and hypotheses, evaluates supporting
-and contradicting evidence, preserves uncertainty, and revises assessments.
+Define how SYNAPSE represents claims and hypotheses, evaluates supporting and contradicting evidence, preserves uncertainty, and revises assessments.
 
-Beliefs are revisable assessments, not guaranteed facts. Every material
-revision must be traceable to evidence, reasoning, or an explicitly recorded
-change in assumptions.
+Beliefs are revisable assessments, not guaranteed facts. Every material revision must be traceable to evidence, reasoning, or an explicitly recorded change in assumptions.
 
 ## 2. Core principles
 
@@ -20,8 +19,7 @@ change in assumptions.
 4. Preserve contradictory evidence and competing hypotheses.
 5. Distinguish unknown, unsupported, contradicted, and sufficiently supported.
 6. Do not treat newer evidence as automatically more reliable.
-7. Do not treat a model's confidence score as a calibrated probability
-   without empirical validation.
+7. Do not treat a model's confidence score as a calibrated probability without empirical validation.
 8. Preserve source provenance and relevant uncertainty.
 9. Allow assessments to remain unresolved when evidence is insufficient.
 10. Never fabricate evidence to make a hypothesis internally consistent.
@@ -30,57 +28,51 @@ change in assumptions.
 
 ### Claim
 
-A proposition that can be assessed, such as a statement about an entity,
-event, relationship, or observed condition.
+A proposition that can be assessed, such as a statement about an entity, event, relationship, or observed condition.
 
-A claim should have a stable identifier, normalized representation where
-appropriate, relevant scope, and links to its evidence.
+A claim should have a stable identifier, normalized representation where appropriate, relevant scope, and links to its evidence.
 
 ### Hypothesis
 
 A candidate explanation or interpretation that may account for observations.
+
 Multiple hypotheses may remain active when evidence does not distinguish them.
 
 ### Evidence
 
-An observation, document, tool result, dataset record, measurement, or other
-artifact relevant to a claim or hypothesis.
+An observation, document, tool result, dataset record, measurement, or other artifact relevant to a claim or hypothesis.
 
-Evidence records should identify their source, acquisition context, timestamp
-where available, content hash where applicable, and validation status.
+Evidence records should identify their source, acquisition context, timestamp where available, content hash where applicable, and validation status.
 
 ### Assessment
 
-A versioned judgment about a claim or hypothesis. It includes the assessment
-status, rationale, supporting evidence, contradicting evidence, assumptions,
-and method used to produce it.
+A versioned judgment about a claim or hypothesis. It includes the assessment status, rationale, supporting evidence, contradicting evidence, assumptions, and method used to produce it.
 
 ### Revision event
 
-A durable record connecting an earlier assessment to a new assessment and
-explaining the change.
+A durable record connecting an earlier assessment to a new assessment and explaining the change.
+
+### Assessment target
+
+An assessment must explicitly identify the type and stable identifier of the target being assessed.
+
+Claims and hypotheses share the conceptual epistemic assessment model. Their lifecycle semantics remain distinct from the assessment's evidential status.
+
+Hypothesis lifecycle shall be represented separately from epistemic assessment status. Candidate lifecycle states and their permitted transitions remain subject to separate specification and approval before implementation.
 
 ## 4. Assessment statuses
 
-The initial conceptual status set is:
+The initial conceptual epistemic assessment status set is:
 
-- UNKNOWN: insufficient assessment has been performed.
-- INSUFFICIENT_EVIDENCE: evidence exists but does not justify a conclusion.
-- SUPPORTED: available evidence supports the claim under recorded assumptions.
-- CONTRADICTED: available evidence conflicts with the claim under recorded
-  assumptions.
-- CONFLICTED: material evidence supports and contradicts the claim.
-- RETRACTED: an earlier assessment or claim has been withdrawn with a reason.
+- `UNKNOWN`: insufficient assessment has been performed.
+- `INSUFFICIENT_EVIDENCE`: evidence exists but does not justify a conclusion.
+- `SUPPORTED`: available evidence supports the claim under recorded assumptions.
+- `CONTRADICTED`: available evidence conflicts with the claim under recorded assumptions.
+- `CONFLICTED`: material evidence supports and contradicts the claim.
 
-These statuses describe the current assessment, not absolute truth.
+These statuses describe the current epistemic assessment, not absolute truth.
 
-A claim marked SUPPORTED may later become CONFLICTED or RETRACTED. A
-CONTRADICTED claim must not be treated as logically impossible unless the
-applicable evidence and reasoning justify that conclusion.
-
-The implementation must define whether these statuses apply independently
-to claims and hypotheses or whether hypotheses require additional lifecycle
-states.
+Withdrawal, supersession, and other lifecycle changes shall be represented separately from epistemic assessment status. Historical assessments must remain traceable and must not be silently rewritten.
 
 ## 5. Evidence evaluation
 
@@ -95,12 +87,25 @@ For each assessment, SYNAPSE should record:
 - The reasoning method or rule used.
 - Any known dependence between evidence sources.
 
-Multiple copies of the same underlying source must not automatically count
-as independent corroboration.
+Multiple copies of the same underlying source must not automatically count as independent corroboration.
 
-Source reliability, evidence freshness, and independence require explicit
-evaluation rules. They must not be assigned arbitrary values and presented
-as objectively calibrated measurements.
+Source reliability, evidence freshness, and independence require explicit evaluation rules. They must not be assigned arbitrary values and presented as objectively calibrated measurements.
+
+Evidence provenance should preserve, where available:
+
+- Stable artifact identity.
+- Source identity.
+- Underlying origin or originating source.
+- Acquisition and publication or observation timestamps.
+- Collection method.
+- Content integrity information.
+- Derivation, copying, or transformation relationships.
+- Known or suspected dependencies between evidence sources.
+- The rationale for any assessment of evidence independence.
+
+Multiple artifacts derived from the same underlying source must not automatically be treated as independent corroboration.
+
+Evidence independence and source reliability must not be represented by arbitrary numerical scores or presented as calibrated measurements without an empirically justified method.
 
 ## 6. Revision procedure
 
@@ -124,23 +129,23 @@ A failed persistence operation must not be reported as a completed revision.
 Contradictory evidence must remain visible and attributable to its sources.
 
 Before resolving a contradiction, SYNAPSE may investigate:
+
 - Whether the sources refer to different entities or time periods.
 - Whether terms or measurements use different definitions.
 - Whether either source has validation problems.
 - Whether the observations can coexist under different conditions.
 - Whether an additional observation could distinguish the alternatives.
 
-A contradiction must not be removed merely because one explanation is more
-convenient or appears in a newer source.
+A contradiction must not be removed merely because one explanation is more convenient or appears in a newer source.
 
-If the evidence does not justify resolution, preserve the conflict and
-represent the conclusion as uncertain or unresolved.
+If the evidence does not justify resolution, preserve the conflict and represent the conclusion as uncertain or unresolved.
 
 ## 8. Confidence and uncertainty
 
 Confidence must have a documented meaning for each assessment method.
 
 The system must distinguish:
+
 - Logical entailment under explicit premises.
 - Empirical support from observations.
 - Model-generated confidence estimates.
@@ -149,19 +154,16 @@ The system must distinguish:
 
 These are not interchangeable.
 
-If numeric confidence is introduced, the method, scale, calibration evidence,
-and known limitations must be documented. Missing confidence must not be
-silently interpreted as zero or certainty.
+If numeric confidence is introduced, the method, scale, calibration evidence, and known limitations must be documented. Missing confidence must not be silently interpreted as zero or certainty.
 
-Where possible, evaluations should test calibration and selective prediction,
-including the ability to abstain when evidence is inadequate.
+Where possible, evaluations should test calibration and selective prediction, including the ability to abstain when evidence is inadequate.
 
 ## 9. Provenance and auditability
 
-Every material assessment must reference its premises, evidence, reasoning
-method, and prior version where applicable.
+Every material assessment must reference its premises, evidence, reasoning method, and prior version where applicable.
 
 The system should support questions such as:
+
 - What evidence supports this claim?
 - What evidence contradicts it?
 - Why did the assessment change?
@@ -169,8 +171,7 @@ The system should support questions such as:
 - Which assumptions remain unverified?
 - Which source or reasoning step introduced an error?
 
-Evidence and historical assessments must not be silently rewritten when a
-new assessment is created.
+Evidence and historical assessments must not be silently rewritten when a new assessment is created.
 
 Corrections to erroneous records must themselves be traceable.
 
@@ -178,35 +179,53 @@ Corrections to erroneous records must themselves be traceable.
 
 Claims and conclusions may depend on other claims, evidence, or assumptions.
 
-When a dependency changes or is retracted, SYNAPSE must identify potentially
-affected conclusions. It must mark them for reassessment or explicitly
-document why reassessment is unnecessary.
+When a dependency changes, is withdrawn, or is superseded, SYNAPSE must identify potentially affected conclusions. It must mark them for reassessment or explicitly document why reassessment is unnecessary.
 
-Dependency invalidation must not automatically assert that every dependent
-claim is false.
+Dependency invalidation must not automatically assert that every dependent claim is false.
+
+Dependency evaluation shall be represented separately from epistemic assessment status.
+
+The dependency lifecycle should distinguish:
+
+- `UNCHANGED`: no relevant dependency change has been identified.
+- `POTENTIALLY_STALE`: a dependency changed and may affect the assessment.
+- `REASSESSMENT_REQUIRED`: reassessment has been determined to be necessary.
+- `REASSESSED`: the dependent assessment has been evaluated again.
+- `INVALIDATED`: the prior assessment is no longer valid under the documented dependency change and reasoning.
+
+A dependency change must not automatically imply that the dependent claim is false.
+
+Every invalidation must preserve its triggering dependency change, affected assessment, rationale, and resulting reassessment or resolution.
+
+The exact transition rules and implementation representation remain subject to further specification.
 
 ## 11. Persistence and concurrency
 
 Assessment versions and revision events must be stored durably.
 
-Concurrent revisions must use explicit consistency controls so that one
-revision cannot silently overwrite another. The implementation must define
-version identifiers, conflict detection, transaction boundaries, and recovery
-behavior.
+A belief revision is one logical state transition. The new assessment, revision event, predecessor relationship, relevant evidence and provenance references, and required audit event must commit atomically.
 
-Evidence artifacts may be stored separately from assessment metadata, but
-references must remain verifiable.
+A failed transaction must not leave a partially committed revision or be reported as a successful revision.
+
+Concurrent revisions must use explicit version checks or equivalent transactional controls. Stale revisions and conflicting updates must be detected rather than silently overwriting newer assessments.
+
+Conflicting revisions must be resolved through a validated reassessment process that preserves the prior versions and records the resolution rationale.
+
+Evidence artifacts may be stored separately from assessment metadata, but their references and integrity information must remain verifiable.
+
+Recovery must preserve previous assessment history and reconcile incomplete or uncertain revision operations before dependent consequential work resumes.
 
 ## 12. Testing requirements
 
 Tests must cover:
+
 - Initial unknown assessments.
 - Supporting evidence and contradicting evidence.
 - Conflicting sources.
 - Version preservation and revision reasons.
 - Evidence provenance and missing references.
 - Duplicate or dependent evidence sources.
-- Retraction and downstream invalidation.
+- Claim withdrawal and downstream invalidation.
 - Insufficient evidence and abstention.
 - Concurrent revision conflicts.
 - Persistence failures during revision.
@@ -214,7 +233,8 @@ Tests must cover:
 
 ## 13. Selected decisions and deferred details
 
-Selected baseline:
+### Selected baseline
+
 - Belief assessments are versioned and evidence-grounded; prior versions are preserved.
 - Material revisions include rationale, triggering evidence, provenance, relevant assumptions, and a link to the previous version.
 - Supporting evidence, contradicting evidence, insufficient evidence, and unresolved conflict remain distinct. Conflicting evidence is not silently discarded.
@@ -224,7 +244,28 @@ Selected baseline:
 - Concurrent revisions use version checks or equivalent transactional controls. Conflicts are detected and reassessed through a validated process; last-write-wins is not allowed.
 - Retention rules distinguish raw evidence, derived artifacts, belief/revision history, and audit records. Where deletion is required, remove content as permitted and preserve only lawful, permitted metadata indicating that content is unavailable and why. Distinguish never collected, deleted/expired, inaccessible, and integrity failure.
 
-Deferred details include the initial formal claim/hypothesis schema, supported symbolic rule set, exact reliability/freshness algorithms, whether numeric confidence is needed in the first release, and specific retention periods. Numeric confidence must not be described as calibrated probability without empirical calibration evidence. These details must be specified before their dependent feature is implemented.
+### Deferred implementation details
+
+The following details remain deferred:
+
+- Initial formal claim and hypothesis schemas.
+- Supported symbolic rule set and inference semantics.
+- Exact source reliability and freshness algorithms.
+- Whether numeric confidence is required in the first release.
+- Exact table and field definitions and database indexes.
+- Artifact storage backend.
+- Transaction isolation and locking choices.
+- Specific retention periods.
+- Backup frequency, recovery point objective (RPO), and recovery time objective (RTO).
+- Workload sizing.
+
+These details must be specified and tested before their dependent features, schema, or production-readiness approval.
+
+Numeric confidence must not be described as calibrated probability without empirical calibration evidence.
+
+The selected invariants above are not deferred.
+
+These requirements do not authorize a final database schema or implementation before Milestone 0 approval.
 
 ## 14. Approval status
 

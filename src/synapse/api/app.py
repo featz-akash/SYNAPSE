@@ -1,4 +1,3 @@
-
 """FastAPI application factory for SYNAPSE."""
 
 from __future__ import annotations
@@ -10,8 +9,10 @@ from fastapi import FastAPI
 from sqlalchemy import Engine
 
 from synapse.api.routes.objectives import router as objectives_router
+from synapse.api.routes.reasoning import router as reasoning_router
 from synapse.api.routes.tasks import router as tasks_router
 from synapse.core.config import get_settings
+from synapse.knowledge.knowledge_graph.engine import KnowledgeGraph
 from synapse.persistence.database import (
     create_database_engine,
     create_session_factory,
@@ -21,14 +22,17 @@ from synapse.persistence.unit_of_work import SqlAlchemyUnitOfWork
 UowFactory = Callable[[], SqlAlchemyUnitOfWork]
 
 
-
 def create_app(
     *,
     uow_factory: UowFactory | None = None,
     api_token: str | None = None,
     api_permissions: frozenset[str] | None = None,
+    reasoning_graph: KnowledgeGraph | None = None,
 ) -> FastAPI:
-    """Create and configure the SYNAPSE API application."""
+    """Create and configure the SYNAPSE API application.
+
+    A graph must be explicitly supplied to enable graph-backed reasoning.
+    """
 
     engine: Engine | None = None
     settings = None
@@ -61,8 +65,8 @@ def create_app(
     )
 
     app.state.uow_factory = resolved_uow_factory
+    app.state.reasoning_graph = reasoning_graph
 
-    # Explicit arguments override configured defaults.
     configured_token = (
         api_token
         if api_token is not None
@@ -72,15 +76,10 @@ def create_app(
             else None
         )
     )
-
     configured_permissions = (
         api_permissions
         if api_permissions is not None
-        else (
-            settings.api_permissions
-            if settings is not None
-            else frozenset()
-        )
+        else (settings.api_permissions if settings is not None else frozenset())
     )
 
     app.state.api_token = configured_token
@@ -88,10 +87,11 @@ def create_app(
 
     app.include_router(objectives_router)
     app.include_router(tasks_router)
+    app.include_router(reasoning_router)
 
-    # Public liveness endpoint; does not require authentication.
     @app.get("/health/live", tags=["health"])
     def liveness() -> dict[str, str]:
+        """Public liveness endpoint; does not require authentication."""
         return {"status": "ok"}
 
     return app

@@ -55,6 +55,28 @@ A retry is a new recorded attempt or task revision, not a silent mutation of a c
 3. Use optimistic version checks or equivalent transactional locking; stale updates must fail rather than silently overwrite newer state.
 4. Persist the state change and its required audit event atomically in PostgreSQL. If either required write fails, neither may be represented as committed.
 5. A task may enter `Succeeded` only after verification satisfies its explicit success criteria and the result is durably recorded.
+### Verification outcome handling
+
+Verification outcomes must be interpreted as follows:
+
+- `VERIFIED`: The task's defined success criteria have been satisfied.
+- `FAILED`: The task's defined success criteria have not been satisfied.
+- `INCONCLUSIVE`: Available evidence is insufficient to determine whether
+  the criteria have been satisfied.
+- `PARTIALLY_SATISFIED`: Some, but not all, required criteria have been
+  satisfied.
+
+The controller must not transition a task to `Succeeded` unless the
+applicable verification outcome and required evidence establish
+satisfaction of its task success criteria.
+
+`INCONCLUSIVE` and `PARTIALLY_SATISFIED` must not be treated as complete
+success. They may require further investigation, additional work,
+human input, or a blocked outcome.
+
+A `FAILED` verification outcome must be handled according to the
+applicable failure and retry policy. It must not be silently converted
+into success.
 6. Objective `Completed` requires all required objective success criteria to be verified; a model assertion or task completion alone is insufficient.
 7. Approval must be revalidated at execution time and bound to the exact action, parameters, target/scope, task, and attempt. A materially changed action requires fresh policy evaluation and approval when applicable.
 8. A failed or blocked prerequisite prevents dependent work from being scheduled unless the dependency is explicitly revised and revalidated.
@@ -67,7 +89,14 @@ A retry is a new recorded attempt or task revision, not a silent mutation of a c
 Cancellation is a request to stop scheduling new work; it is not proof that an in-flight external action was stopped or rolled back. Record the cancellation request, stop new scheduling, and inspect all in-flight or uncertain actions. The table's `Running` → `Cancelled` edge is permitted only when no external effect is in flight or uncertain, or when the effect is confirmed stopped/settled. Otherwise, route the task through `Reconciling` (or an equivalent controller-managed recovery path) before cancellation can settle. Reconcile known outcomes or explicitly escalate an outcome that cannot safely be resolved, and durably record that escalation before settling the objective as `Cancelled`. Preserve irreversible effects and their observations in the record.
 
 Pause prevents new work from being scheduled. Resume requires revalidating the objective/task state, budget, dependencies, and relevant authorization. Approval denial is recorded; replanning may propose an alternative, but the alternative requires a fresh policy decision and fresh approval if required.
+An objective may remain in `Running`, `Paused`, or `Blocked` while
+controller-managed task reconciliation is pending. The objective must
+not transition to `Cancelled` until all in-flight or uncertain
+consequential actions have been reconciled or explicitly escalated
+and durably recorded.
 
+The objective does not require a separate `Reconciling` state;
+reconciliation is represented at the task/action lifecycle level.
 ## 6. Action lifecycle and recovery
 
 Before a consequential external action, persist a durable action intent with a stable action ID, canonical parameters, task/attempt identity, risk classification, and authorization reference. Revalidate authorization at the execution boundary. Record observed outcomes and verification separately. Use provider idempotency keys where supported, but never assume a stable ID guarantees exactly-once execution.
@@ -75,6 +104,14 @@ Before a consequential external action, persist a durable action intent with a s
 After a timeout, process crash, lost response, or persistence failure where the external effect may have occurred, enter `Reconciling` or an equivalent controller-managed recovery path. Inspect the durable intent and available external observations before retrying. If outcome cannot be safely established, preserve uncertainty and escalate; do not infer success or failure.
 
 If PostgreSQL is unavailable and required durable intent/authorization records cannot be confirmed, block new consequential actions. Once storage returns, validate integrity and reconcile in-flight actions before resuming.
+A transition from `Reconciling` to `Ready` is permitted only after the
+controller has established that scheduling another attempt is safe
+under the available observations, idempotency guarantees, current
+policy, and retry budget. The new attempt must preserve the previous
+attempt's intent, observations, and verification history.
+
+An unresolved external outcome must remain uncertain and must not be
+treated as permission to replay the action.
 
 ## 7. Budgets and scheduling
 
@@ -85,7 +122,14 @@ The planner proposes a next task; the controller validates prerequisites, budget
 ## 8. Audit and observability
 
 Record transition requests and decisions, committed transitions, actor/component identity, prior/new version, reason, relevant evidence, authorization references, attempt identifiers, and recovery decisions. An attempted transition must not be logged as though it committed. Avoid secrets and unnecessary sensitive payloads.
+Audit records are append-only during normal operation. Corrections,
+reconciliation results, and subsequent decisions must be represented
+by new records referencing the relevant prior records, rather than by
+silently rewriting historical events.
 
+Audit integrity mechanisms provide evidence of record integrity and
+continuity; they do not independently establish the truth of recorded
+claims.
 ## 9. Required tests
 
 - Every permitted transition succeeds and every unlisted transition is rejected.
@@ -108,3 +152,11 @@ Record transition requests and decisions, committed transitions, actor/component
 ## 11. Approval status
 
 Consolidated draft. Milestone 0 is not approved by this document alone. Review it alongside the component contracts, data architecture, security model, belief revision, acceptance criteria, and benchmark plan before implementation is authorized.
+The objective/task lifecycle, authorization transitions, verification
+outcomes, action recovery, persistence requirements, and audit semantics
+must remain consistent with the approved System Overview, Component
+Contracts, Data Architecture, Security Model, and Belief Revision
+specifications.
+
+A conflicting implementation interpretation must not silently override
+an accepted architecture decision.

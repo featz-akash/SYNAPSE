@@ -7,6 +7,9 @@ from synapse.domain.contracts import (
     Task,
 )
 from synapse.domain.state import ObjectiveState, TaskState
+from synapse.domain.claims import Claim
+from synapse.domain.provenance import Provenance
+from synapse.domain.evidence import EvidenceLink, EvidenceRole
 
 __all__ = [
     "EvidenceArtifact",
@@ -15,4 +18,6 @@ __all__ = [
     "ProposedAction",
     "Task",
     "TaskState",
+    "Claim",
+    "Provenance",
 ]
